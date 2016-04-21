@@ -1,3 +1,5 @@
+'use strict';
+
 var express = require('express');
 var path = require('path');
 var favicon = require('serve-favicon');
@@ -10,6 +12,14 @@ var users = require('./routes/users');
 
 var app = express();
 
+/* Note: using staging server url, remove .testing() for production
+Using .testing() will overwrite the debug flag with true */ 
+var LEX = require('letsencrypt-express').testing();
+
+var lex = LEX.create({
+  configDir: require('os').homedir() + '/letsencrypt/etc'
+});
+
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'jade');
@@ -21,6 +31,17 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
+
+app.use(function (req, res) {
+  res.send({ success: true });
+});
+
+lex.onRequest = app;
+
+lex.listen([80], [443, 5001], function () {
+  var protocol = ('requestCert' in this) ? 'https': 'http';
+  console.log("Listening at " + protocol + '://localhost:' + this.address().port);
+});
 
 app.use('/', routes);
 app.use('/users', users);
